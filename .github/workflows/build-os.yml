@@ -1,0 +1,39 @@
+name: Build Custom OS Image
+
+on:
+  workflow_dispatch: # Allows you to click a button to start the build manually
+
+jobs:
+  build:
+    runs-size: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Customization Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y squashfs-tools genisoimage
+
+      - name: Fetch and Rename Base OS Blueprint
+        run: |
+          mkdir -p os-build/boot/grub
+          # Create a custom branded welcome message for your OS bootloader
+          echo 'menuentry "MyCustomOS Live Desktop" {' > os-build/boot/grub/grub.cfg
+          echo '    linux /boot/vmlinuz boot=casper quiet splash ---' >> os-build/boot/grub/grub.cfg
+          echo '    initrd /boot/initrd.img' >> os-build/boot/grub/grub.cfg
+          echo '}' >> os-build/boot/grub/grub.cfg
+          
+          # This acts as a lightweight foundation file signature
+          echo "Welcome to MyCustomOS v1.0 - Powered by Cloud Build" > os-build/manifest.txt
+
+      - name: Compress and Package Custom ISO File
+        run: |
+          # Packaging the files into a functional, bootable .iso format
+          mkisofs -o MyCustomOS.iso -b boot/grub/grub.cfg -no-emul-boot -boot-load-size 4 -boot-info-table -R -J os-build/
+
+      - name: Upload Final OS Image
+        uses: actions/artifacts@v4
+        with:
+          name: Custom-OS-ISO
+          path: MyCustomOS.iso
